@@ -12,12 +12,23 @@ class ClientObjectCollection(ClientObject):
         self.item_type = item_type
 
     def create_typed_object(self, properties, client_object_type):
+        from office365.sharepoint.client_context import ClientContext
+        from office365.runtime.resource_path_entity import ResourcePathEntity
+
         if client_object_type is None:
             raise AttributeError("No class for object type '{0}' found".format(client_object_type))
 
-        client_object = client_object_type(self.context)
+        web_url, resource_path = properties["__metadata"]["uri"].split("/_api/")
+
+        context = self.context
+        if client_object_type.__name__ == "Web":
+            # create a new context to represent the new web object
+            context = ClientContext(web_url, self.context.auth_context)
+
+        client_object = client_object_type(context, ResourcePathEntity.from_uri(resource_path, self.context))
         client_object._parent_collection = self
         client_object.map_json(properties)
+
         return client_object
 
     def map_json(self, payload):
